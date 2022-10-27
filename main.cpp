@@ -1,3 +1,7 @@
+/**********************************************************
+ * HEADER
+ **********************************************************/
+
 #include <iostream>   
 #include <cctype>     
 #include <vector>     
@@ -16,7 +20,7 @@ private:
     string titleID, primaryTitle, startYear, genres; //INDEX: 0, 2, 5, 8
 };
 
-void TitleRecord::setInfo(const vector<std::string> &items) {
+void TitleRecord::setInfo(const vector<string>& items) {
     string temp = items.at(8);
 
     this->titleID = items.at(0);
@@ -42,7 +46,7 @@ private:
     vector<string> knownTitles;
 };
 
-void NameRecord::setInfo(const vector<std::string> &items) {
+void NameRecord::setInfo(const vector<string>& items) {
     string temp = items.at(4);
     this->nameID = items.at(0);
     this->primaryName = items.at(1);
@@ -55,6 +59,7 @@ void NameRecord::setInfo(const vector<std::string> &items) {
     }
     temp.push_back(',');
     this->primaryProfession = temp;
+
     temp = items.at(5);
     while (int(temp.find(',')) != -1){
         this->knownTitles.push_back(temp.substr(0, temp.find(',')));
@@ -73,7 +78,7 @@ private:
     string titleID = "NONE", nameID = "NONE", characters = "NONE";
 }nullRecord;
 
-void PrincipalRecord::setInfo(const vector<std::string> &items) {
+void PrincipalRecord::setInfo(const vector<string> &items) {
     this->titleID = items.at(0);
     this->nameID = items.at(2);
     this->characters = items.at(5);
@@ -94,7 +99,7 @@ bool containsSearchWord(const NameRecord& title, const vector<string>& searchWor
 string stringToLower(string s);
 string getCharacterName(const vector<NameRecord>& names, const string& nameID);
 string findMovieName(const vector<TitleRecord>& movieTitles, const string& movieID);
-string findCharacterName(const vector<PrincipalRecord>& principalRecords, string movieID, string characterID);
+string findCharacterName(const vector<PrincipalRecord>& principalRecords, const string& movieID, const string& characterID);
 vector<TitleRecord> findMatchingTitles(const vector<TitleRecord>& titles, const vector<string>& searchWords);
 vector<PrincipalRecord> findMovieCharacters(const vector<PrincipalRecord>& records, const string& movieID);
 /*********************************************** Helper functions ***************************************/
@@ -287,38 +292,7 @@ vector<NameRecord>& names){
     }
 }
 
-
-
-void menuOption2(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
-vector<NameRecord>& names){
-    vector<string> searchWords = createKeyWords();
-    vector<NameRecord> matchingNames = findStars(names,searchWords);
-    vector<string> movieIDs;
-
-    cout << "---------------" << endl;
-    for (int i = 0; i < matchingNames.size(); i++){
-        cout << i << ":" << endl
-             << matchingNames.at(i).getPrimaryName() << endl
-             << matchingNames.at(i).getPrimaryProfession() << endl
-             << "(" << matchingNames.at(i).getBirthYear() << "-" << matchingNames.at(i).getDeathYear() << ")" << endl
-             << "---------------" << endl;
-    }
-
-    cout << "Select an actor/actress to see movies (-1 to go back to the previous menu): ";
-    int choice;
-    cin >> choice;
-    if (choice != -1){
-        cout << endl;
-        movieIDs = matchingNames.at(choice).getKnownTitles();
-        for (int i = 0; i < movieIDs.size(); i++){
-             cout << findMovieName(movieTitles, movieIDs.at(i)) << " " << findCharacterName(principalRecords, movieIDs.at(i),
-                                                                                            matchingNames.at(choice).getNameID()) << endl;
-        }
-    }
-
-}
-
-/*string findMovieName(const vector<TitleRecord>& movieTitles, const string& movieID){
+string findMovieName(const vector<TitleRecord>& movieTitles, const string& movieID){
     int low = 0, mid, high = movieTitles.size() - 1;
     while (low <= high){
         mid = (low + high) / 2;
@@ -342,7 +316,44 @@ string findCharacterName(const vector<PrincipalRecord>& principalRecords, const 
         }
     }
     return "NULL";
-}*/
+}
+
+
+
+void menuOption2(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
+vector<NameRecord>& names){
+    vector<string> searchWords = createKeyWords();
+    vector<NameRecord> matchingNames = findStars(names,searchWords);
+    vector<string> movieIDs;
+
+    cout << "---------------" << endl;
+    for (int i = 0; i < matchingNames.size(); i++){
+        cout << i << ":" << endl
+             << matchingNames.at(i).getPrimaryName() << endl
+             << matchingNames.at(i).getPrimaryProfession() << endl
+             << "(" << matchingNames.at(i).getBirthYear() << "-" << matchingNames.at(i).getDeathYear() << ")" << endl
+             << "---------------" << endl;
+    }
+
+    cout << "Select an actor/actress to see movies (-1 to go back to the previous menu): ";
+    int choice;
+    cin >> choice;
+    if (choice != -1){
+        cout << endl;
+
+        movieIDs = matchingNames.at(choice).getKnownTitles();
+
+        for (int i = 0; i < movieIDs.size(); i++){
+            cout << findMovieName(movieTitles, movieIDs.at(i)) << " ";
+            cout << findCharacterName(principalRecords, movieIDs.at(i), matchingNames.at(choice).getNameID()) << endl;
+        }
+    }
+
+}
+
+
+
+
 
 
 
@@ -351,9 +362,9 @@ int run(const string& titlesFile, const string& namesFile, const string& princip
     vector<NameRecord> nameRecords;
     vector<PrincipalRecord> principalRecords;
 
-    //fillMovieTitles(movieTitles, titlesFile);
-    //fillNameRecords(nameRecords, namesFile);
-    //fillPrincipalRecords(principalRecords, principalsFile);
+    fillMovieTitles(movieTitles, titlesFile);
+    fillNameRecords(nameRecords, namesFile);
+    fillPrincipalRecords(principalRecords, principalsFile);
 
     int menuChoice;
     do{
@@ -365,8 +376,9 @@ int run(const string& titlesFile, const string& namesFile, const string& princip
                 break;
             case 2:
                 menuOption2(movieTitles, principalRecords, nameRecords);
+                break;
             default:
-                exit(0);
+               exit(0);
         }
     }while(menuChoice != 3);
 
