@@ -1,10 +1,13 @@
+/**********************************************************
+ * HEADER
+ **********************************************************/
+
 #include <iostream>   
 #include <cctype>     
 #include <vector>     
 #include <sstream>
 #include <fstream>
 using namespace std;
-
 
 class TitleRecord{
 public:
@@ -18,25 +21,15 @@ private:
 };
 
 void TitleRecord::setInfo(const vector<std::string> &items) {
+    string temp = items.at(8);
+
     this->titleID = items.at(0);
     this->primaryTitle = items.at(2);
     this->startYear = items.at(5);
-    this->genres = items.at(8);
-}
-
-
-/*********************************************** Helper functions ***************************************/
-void splitString(string line, char delimiter, vector<string>& items);
-
-
-//The splitString function takes a line and split it on the delimiter and push the parts into items
-void splitString(string line, char delimiter, vector<string>& items) {
-	stringstream s_stream(line);
-	while (s_stream.good()) {
-		string item;
-		getline(s_stream, item, delimiter);
-		items.push_back(item);
-	}
+    while (int(temp.find(',')) != -1){
+        temp.at(temp.find(',')) = ' ';
+    }
+    this->genres = temp;
 }
 
 class NameRecord{
@@ -47,16 +40,31 @@ public:
     string getBirthYear() const {return birthYear;}
     string getDeathYear() const {return deathYear;}
     string getPrimaryProfession() const {return primaryProfession;}
+    vector<string> getKnownTitles() const {return knownTitles;}
 private:
-    string nameID, primaryName, birthYear, deathYear, primaryProfession; //INDEXES: 0, 1, 2, 3, 4
+    string nameID, primaryName, birthYear, deathYear, primaryProfession;
+    vector<string> knownTitles;
 };
 
 void NameRecord::setInfo(const vector<std::string> &items) {
+    string temp = items.at(4);
     this->nameID = items.at(0);
     this->primaryName = items.at(1);
     this->birthYear = items.at(2);
     this->deathYear = items.at(3);
-    this->primaryProfession = items.at(4);
+    for (int i = 0; i < temp.size(); i++){
+        if(temp.at(i) == ','){
+            temp.insert(i + 1, " ");
+        }
+    }
+    temp.push_back(',');
+    this->primaryProfession = temp;
+    temp = items.at(5);
+    while (int(temp.find(',')) != -1){
+        this->knownTitles.push_back(temp.substr(0, temp.find(',')));
+        temp.erase(0, temp.find(',') + 1);
+    }
+    this->knownTitles.push_back(temp);
 }
 
 class PrincipalRecord{
@@ -66,8 +74,8 @@ public:
     string getNameID() const {return nameID;}
     string getCharacters() const {return characters;}
 private:
-    string titleID, nameID, characters;
-};
+    string titleID = "NONE", nameID = "NONE", characters = "NONE";
+}nullRecord;
 
 void PrincipalRecord::setInfo(const vector<std::string> &items) {
     this->titleID = items.at(0);
@@ -75,6 +83,122 @@ void PrincipalRecord::setInfo(const vector<std::string> &items) {
     this->characters = items.at(5);
 }
 
+/*********************************************** Function Prototypes ***************************************/
+void searchCharacter(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
+vector<NameRecord>& names);
+void searchForMovies(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
+vector<NameRecord>& names);
+void displayMenu();
+void splitString(string line, char delimiter, vector<string>& items);
+void fillMovieTitles(vector<TitleRecord>& titles, const string& titlesFile);
+void fillNameRecords(vector<NameRecord>& names, const string& namesFile);
+void fillPrincipalRecords(vector<PrincipalRecord>& records, const string& principalsFile);
+bool containsSearchWord(const TitleRecord& title, const vector<string>& searchWords);
+bool containsSearchWord(const NameRecord& title, const vector<string>& searchWords);
+string stringToLower(string s);
+string getCharacterName(const vector<NameRecord>& names, const string& nameID);
+string findMovieName(const vector<TitleRecord>& movieTitles, const string& movieID);
+string findCharacterName(const vector<PrincipalRecord>& principalRecords, string movieID, string characterID);
+vector<TitleRecord> findMatchingTitles(const vector<TitleRecord>& titles, const vector<string>& searchWords);
+vector<PrincipalRecord> findMovieCharacters(const vector<PrincipalRecord>& records, const string& movieID);
+/*********************************************** Helper functions ***************************************/
+//The splitString function takes a line and split it on the delimiter and push the parts into items
+void splitString(string line, char delimiter, vector<string>& items) {
+	stringstream s_stream(line);
+	while (s_stream.good()) {
+		string item;
+		getline(s_stream, item, delimiter);
+		items.push_back(item);
+	}
+}
+
+string stringToLower(string s){
+    string temp;
+    for (int i = 0; i < s.size(); i++){
+        temp += tolower(s.at(i));
+    }
+    return temp;
+}
+
+vector<string> createKeyWords(){
+    vector<string> searchWords;
+    string search;
+    cout << "Enter search phrase: ";
+    cin >> search;
+    cout << endl;
+    splitString(search,'+',searchWords);
+    return searchWords;
+}
+
+bool containsSearchWord(const TitleRecord& title, const vector<string>& searchWords){
+    string tempTitle = stringToLower(title.getPrimaryTitle());
+    for (int i = 0; i < searchWords.size(); i++){
+        if (int(tempTitle.find(stringToLower(searchWords.at(i)))) < 0){
+            return false;
+        }
+    }
+    return true;
+}
+
+bool containsSearchWord(const NameRecord& title, const vector<string>& searchWords){
+    string tempTitle = stringToLower(title.getPrimaryName());
+    for (int i = 0; i < searchWords.size(); i++){
+        if (int(tempTitle.find(stringToLower(searchWords.at(i)))) < 0){
+            return false;
+        }
+    }
+    return true;
+}
+
+vector<TitleRecord> findMatchingTitles(const vector<TitleRecord>& titles, const vector<string>& searchWords){ //FIXME: Should
+    // check if the
+    vector<TitleRecord> foundTitles;
+
+    for (int i = 0; i < titles.size(); i++){
+        if (containsSearchWord(titles.at(i), searchWords)){
+            foundTitles.push_back(titles.at(i));
+        }
+    }
+
+    return foundTitles;
+}
+
+vector<PrincipalRecord> findMovieCharacters(const vector<PrincipalRecord>& records, const string& movieID){ //BINARY SEARCH
+    vector<PrincipalRecord> movieCharacters;
+    for (int i = 0; i < records.size(); i++){
+        if (records.at(i).getTitleID() == movieID && records.at(i).getCharacters() != "\\N"){
+            movieCharacters.push_back(records.at(i));
+        }
+    }
+    return movieCharacters;
+}
+
+string getCharacterName(const vector<NameRecord>& names, const string& nameID){
+    int low = 0, mid, high = names.size() - 1;
+    while (low <= high){
+        mid = (high + low) / 2;
+        if (nameID > names.at(mid).getNameID()){
+            low = mid + 1;
+        }
+        else if (nameID < names.at(mid).getNameID()){
+            high = mid - 1;
+        }
+        else if (nameID == names.at(mid).getNameID()){
+            return names.at(mid).getPrimaryName();
+        }
+    }
+    return "NULL";
+}
+
+vector<NameRecord> findStars(const vector<NameRecord>& names, const vector<string>& keyWords){
+    vector<NameRecord> matchingNames;
+    for (int i = 0; i < names.size(); i++){
+        if (containsSearchWord(names.at(i),keyWords)){
+            matchingNames.push_back(names.at(i));
+        }
+    }
+    return matchingNames;
+}
 /**********************************************************************************************************/
 
 void fillMovieTitles(vector<TitleRecord>& titles, const string& titlesFile){
@@ -130,33 +254,6 @@ void fillPrincipalRecords(vector<PrincipalRecord>& records, const string& princi
     }
 }
 
-vector<TitleRecord> findMatchingTitles(vector<TitleRecord> titles, const string& searchWord){
-    int low = 0, high = titles.size() - 1, mid = 0;
-    TitleRecord temp;
-    vector<TitleRecord> foundTitles;
-    //Keep finding matching titles until there are no more
-    while (mid != -1){
-        while (low <= high){
-            mid = (high - low) / 2;
-            if (searchWord > titles.at(mid).getPrimaryTitle()){
-                low = mid + 1;
-            }
-            else if (searchWord < titles.at(mid).getPrimaryTitle()){
-                high = mid - 1;
-            }
-            else if (searchWord == titles.at(mid).getPrimaryTitle()){
-                temp = titles.at(mid);
-                foundTitles.push_back(temp);
-                titles.erase(titles.begin() + mid);
-            }
-            else{
-                mid = -1;
-            }
-        }
-    }
-    return foundTitles;
-}
-
 void displayMenu(){
     cout << "Select a menu option:" << endl
          << "\t1. Search for movies" << endl
@@ -165,17 +262,93 @@ void displayMenu(){
     cout << "Your choice --> ";
 }
 
-void searchForMovies(const vector<TitleRecord>& movieTitles){
-    vector<TitleRecord> foundMovies;
-    string search;
-    cout << "Enter search phrase: ";
-    cin >> search;
-    while (int(search.find('+')) != -1) {
-        search.at(int(search.find('+'))) = ' ';
+void menuOption1(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
+vector<NameRecord>& names){
+    vector<TitleRecord> foundTitles;
+    vector<PrincipalRecord> foundCharacters;
+    vector<string> searchWords = createKeyWords();
+
+    foundTitles = findMatchingTitles(movieTitles, searchWords);
+
+    for (int i = 0; i < foundTitles.size(); i++){
+        cout << i << ":" << endl
+             << "Title: " << foundTitles.at(i).getPrimaryTitle() << endl
+             << "Year: " << foundTitles.at(i).getStartYear() << endl
+             << "Genre: " << foundTitles.at(i).getGenres() << endl
+             << "---------------" << endl;
     }
-    foundMovies = findMatchingTitles(movieTitles, search);
-    if ()
+
+    cout << "Select a movie to see its actors/actresses (-1 to go to the previous menu): ";
+    int choice;
+    cin >> choice;
+
+    if (choice != -1){
+        foundCharacters = findMovieCharacters(principalRecords, foundTitles.at(choice).getTitleID());
+        for (int i = 0; i < foundCharacters.size(); i++){
+            cout << getCharacterName(names,foundCharacters.at(i).getNameID()) << " " << foundCharacters.at(i).getCharacters() <<
+                 endl;
+        }
+    }
 }
+
+
+
+void menuOption2(const vector<TitleRecord>& movieTitles, const vector<PrincipalRecord>& principalRecords, const
+vector<NameRecord>& names){
+    vector<string> searchWords = createKeyWords();
+    vector<NameRecord> matchingNames = findStars(names,searchWords);
+    vector<string> movieIDs;
+
+    cout << "---------------" << endl;
+    for (int i = 0; i < matchingNames.size(); i++){
+        cout << i << ":" << endl
+             << matchingNames.at(i).getPrimaryName() << endl
+             << matchingNames.at(i).getPrimaryProfession() << endl
+             << "(" << matchingNames.at(i).getBirthYear() << "-" << matchingNames.at(i).getDeathYear() << ")" << endl
+             << "---------------" << endl;
+    }
+
+    cout << "Select an actor/actress to see movies (-1 to go back to the previous menu): ";
+    int choice;
+    cin >> choice;
+    if (choice != -1){
+        cout << endl;
+        movieIDs = matchingNames.at(choice).getKnownTitles();
+        for (int i = 0; i < movieIDs.size(); i++){
+             cout << findMovieName(movieTitles, movieIDs.at(i)) << " " << findCharacterName(principalRecords, movieIDs.at(i),
+                                                                                            matchingNames.at(choice).getNameID()) << endl;
+        }
+    }
+
+}
+
+/*string findMovieName(const vector<TitleRecord>& movieTitles, const string& movieID){
+    int low = 0, mid, high = movieTitles.size() - 1;
+    while (low <= high){
+        mid = (low + high) / 2;
+        if (movieID > movieTitles.at(mid).getTitleID()){
+            low = mid + 1;
+        }
+        else if (movieID < movieTitles.at(mid).getTitleID()){
+            high = mid - 1;
+        }
+        else if (movieID == movieTitles.at(mid).getTitleID()){
+            return movieTitles.at(mid).getPrimaryTitle();
+        }
+    }
+    return "No Movies Found";
+}
+
+string findCharacterName(const vector<PrincipalRecord>& principalRecords, const string& movieID, const string& characterID){
+    for (int i = 0; i < principalRecords.size(); i++){
+        if (principalRecords.at(i).getTitleID() == movieID && principalRecords.at(i).getNameID() == characterID){
+            return principalRecords.at(i).getCharacters();
+        }
+    }
+    return "NULL";
+}*/
+
+
 
 int run(const string& titlesFile, const string& namesFile, const string& principalsFile) {
     vector<TitleRecord> movieTitles;
@@ -190,10 +363,15 @@ int run(const string& titlesFile, const string& namesFile, const string& princip
     do{
         displayMenu();
         cin >> menuChoice;
-        if (menuChoice == 1){
-            searchForMovies(movieTitles);
+        switch (menuChoice){
+            case 1:
+                menuOption1(movieTitles, principalRecords, nameRecords);
+                break;
+            case 2:
+                menuOption2(movieTitles, principalRecords, nameRecords);
+            default:
+                exit(0);
         }
-        break;
     }while(menuChoice != 3);
 
 	return 0;	
