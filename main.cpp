@@ -1,11 +1,3 @@
-/**------------------------------------------
-    Program 4: IMDB Searcher
-
-    Course: CS 141, Fall 2022.
-    System: MacOS using Clion
-    Starter Code Author: Dr. Sara Riazi
-    Student Author: Krenar Banushi
--------------------------------------------*/
 #include <iostream>   
 #include <cctype>     
 #include <vector>     
